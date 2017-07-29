@@ -3,9 +3,7 @@ project(client)
 
 set(CMAKE_CXX_STANDARD 14)
 
-find_package(Boost COMPONENTS system REQUIRED)
-
-set(SOURCE_FILES src/main.cpp include/ChatClient.h src/ChatClient.cpp)
+set(SOURCE_FILES src/main.cpp include/ChatClient.h include/Constants.h src/ChatClient.cpp)
 add_executable(client ${SOURCE_FILES})
 
-target_link_libraries(client ${Boost_SYSTEM_LIBRARY})
+target_link_libraries(client pthread)

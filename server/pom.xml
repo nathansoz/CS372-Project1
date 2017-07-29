@@ -14,6 +14,11 @@
             <version>1.4</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>org.jline</groupId>
+            <artifactId>jline</artifactId>
+            <version>3.3.0</version>
+        </dependency>
     </dependencies>
 
     <build>
