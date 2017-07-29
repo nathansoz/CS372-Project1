@@ -1,8 +1,10 @@
 import org.apache.commons.cli.*;
 
+import java.io.Console;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
 public class ChatServer
 {
@@ -36,8 +38,26 @@ public class ChatServer
             while(true)
             {
                 Socket connection = socket.accept();
+                ThreadSafeSocketWrapper wrapper = new ThreadSafeSocketWrapper(connection);
 
-                break;
+                Thread ReaderThread = new Thread(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        try
+                        {
+                            Read(wrapper);
+                        }
+                        catch(IOException ex)
+                        {
+                            //EAT
+                            System.out.println(String.format("Client at %s disconnected.", wrapper.RemoteAddress));
+                        }
+                    }
+
+                });
+
+                ReaderThread.start();
             }
         }
         catch(IOException ex)
@@ -45,8 +65,16 @@ public class ChatServer
             System.out.println("Unable to create socket!");
             return 1;
         }
+    }
 
-        return 0;
+    private void Read(ThreadSafeSocketWrapper wrapper) throws IOException
+    {
+        while(true)
+        {
+            byte[] data = wrapper.Read();
+            String str = new String(data, StandardCharsets.UTF_8);
+            System.out.println(str);
+        }
     }
 
     private void ParseCommandLine(String[] args) throws ParseException, NumberFormatException
