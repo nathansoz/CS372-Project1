@@ -12,6 +12,9 @@
 #include "../include/ChatClient.h"
 #include "../include/Constants.h"
 
+/*
+ * Creates a ChatClient and starts to set up socket resources
+ */
 ChatClient::ChatClient(std::string handle)
 {
     _shouldDisconnect = false;
@@ -29,11 +32,9 @@ ChatClient::ChatClient(std::string handle)
     _sendQueue.emplace(handle);
 }
 
-ChatClient::~ChatClient()
-{
-
-}
-
+/*
+ * Signals to worker threads to shut down. Joins the threads and disconnects from server.
+ */
 void ChatClient::Disconnect()
 {
     _disconnecting = true;
@@ -54,6 +55,9 @@ void ChatClient::Disconnect()
     close(_socketFileDescriptor);
 }
 
+/*
+ * Like disconnect, but can be called from the loop that detects server disconnection
+ */
 void ChatClient::SafeDisconnect()
 {
     _disconnecting = true;
@@ -69,6 +73,9 @@ void ChatClient::SafeDisconnect()
     close(_socketFileDescriptor);
 }
 
+/*
+ * Loops and detects hangup
+ */
 void ChatClient::DisconnectLoop()
 {
 
@@ -82,9 +89,13 @@ void ChatClient::DisconnectLoop()
             std::cout << std::endl << "Terminal reset called to fix any readline blocking issues." << std::endl;
             exit(0);
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
     }
 }
 
+/*
+ * Attempts to connect to the server. Exits on error
+ */
 void ChatClient::Connect(char* host, char* port)
 {
     std::cout << "Connecting on port " << port << std::endl << std::flush;
@@ -137,6 +148,9 @@ void ChatClient::Connect(char* host, char* port)
     _disconnectWorker = std::thread(&ChatClient::DisconnectLoop, this);
 }
 
+/*
+ * receive message and print to screen
+ */
 void ChatClient::ReceiveLoop()
 {
     while(!_disconnecting)
@@ -235,6 +249,9 @@ void ChatClient::ReceiveLoop()
     }
 }
 
+/*
+ * Dequeues message to send, sends it.
+ */
 void ChatClient::SendLoop()
 {
     while(true)

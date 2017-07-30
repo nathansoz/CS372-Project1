@@ -8,6 +8,9 @@
 
 #include "../include/ChatClient.h"
 
+/*
+ * Any sigpipes we get are probably from disconnected server. Let's catch them here.
+ */
 void SIGPIPE_HANDLER(int sig)
 {
     std::cout << std::endl << "Remote has hung up. Disconnecting." << std::endl;
@@ -41,6 +44,7 @@ int main(int argc, char** argv) {
     {
         toSend = readline((std::string(handle) + std::string("> ")).c_str());
 
+        // Obviously this could be better :)
         if(toSend == "\\quit")
         {
             client.Disconnect();

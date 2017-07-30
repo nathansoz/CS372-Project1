@@ -18,12 +18,13 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-
+/*
+ * The main class for the chat client. Manages the connection lifecycle and sending/recv of data.
+ */
 class ChatClient
 {
 public:
-    ChatClient(std::string handle);
-    ~ChatClient();
+    explicit ChatClient(std::string handle);
     void Connect(char* host, char* port);
     void Disconnect();
     void SendMessage(std::string message);
