@@ -40,6 +40,7 @@ public class ThreadSafeSocketWrapper
             //Size of data for recpt
             dataOut.writeInt(data.length);
             dataOut.write(data);
+            dataOut.flush();
         }
         finally
         {
@@ -82,8 +83,6 @@ public class ThreadSafeSocketWrapper
     public void Close() throws IOException
     {
         _socketLock.lock();
-        _readLock.lock();
-        _writeLock.lock();
 
         try
         {
@@ -95,8 +94,6 @@ public class ThreadSafeSocketWrapper
         finally
         {
             _socketLock.unlock();
-            _readLock.unlock();
-            _writeLock.unlock();
         }
     }
 }

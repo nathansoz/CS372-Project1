@@ -6,13 +6,16 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
+#include <sys/fcntl.h>
 
 #include "../include/ChatClient.h"
 #include "../include/Constants.h"
 
 ChatClient::ChatClient(std::string handle)
 {
+    _shouldDisconnect = false;
     _disconnecting = false;
+    _userHandle = handle;
 
     _socketFileDescriptor = socket(AF_UNIX, SOCK_STREAM, 0);
 
@@ -40,11 +43,29 @@ void ChatClient::Disconnect()
     }
 
     _sendWorker.join();
+    _receiveWorker.join();
+
+    close(_socketFileDescriptor);
 }
 
-void ChatClient::Connect(int port)
+void ChatClient::DisconnectLoop()
 {
-    std::cout << "Connecting on port " << port << std::endl;
+
+    while(!_disconnecting)
+    {
+        if (_shouldDisconnect) {
+            std::cout << std::endl << "Remote has hung up, disconnecting." << std::endl;
+            Disconnect();
+            std::cout << std::endl << "Now exiting." << std::endl;
+            system("reset -Q");
+            exit(0);
+        }
+    }
+}
+
+void ChatClient::Connect(char* host, char* port)
+{
+    std::cout << "Connecting on port " << port << std::endl << std::flush;
 
     struct addrinfo hints, *res, *loop;
     int status;
@@ -54,7 +75,7 @@ void ChatClient::Connect(int port)
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
-    if ((status = getaddrinfo("127.0.0.1", "8080", &hints, &res)) != 0 || res == nullptr)
+    if ((status = getaddrinfo(host, port, &hints, &res)) != 0 || res == nullptr)
     {
         std::cerr << "getaddrinfo failed with: " << gai_strerror(status) << std::endl;
         exit(1);
@@ -80,6 +101,8 @@ void ChatClient::Connect(int port)
         break;
     }
 
+    fcntl(_socketFileDescriptor, F_SETFL, O_NONBLOCK);
+
     //did we get to the end of the loop without connecting?
     if(loop == nullptr)
     {
@@ -89,22 +112,56 @@ void ChatClient::Connect(int port)
 
     _sendWorker = std::thread(&ChatClient::SendLoop, this);
     _receiveWorker = std::thread(&ChatClient::ReceiveLoop, this);
+    _disconnectWorker = std::thread(&ChatClient::DisconnectLoop, this);
 }
 
 void ChatClient::ReceiveLoop()
 {
-    while(true)
+    while(!_disconnecting)
     {
         size_t messageSizeLength = sizeof(uint32_t);
-        size_t messageSizeRemaining = messageSizeLength;
+        ssize_t messageSizeRecv = 0;
 
+        auto buffer1 = new unsigned char[messageSizeLength];
         uint32_t messageSize;
 
         do
         {
-            messageSizeRemaining -= recv(_socketFileDescriptor, &messageSize + (messageSizeLength - messageSizeRemaining), messageSizeRemaining, 0);
+            auto toRead = messageSizeLength - messageSizeRecv;
+            auto res = recv(_socketFileDescriptor, buffer1 + messageSizeRecv, toRead, 0);
+            auto err = errno;
+
+            if(res == -1)
+            {
+                if(err == EAGAIN || err == EWOULDBLOCK)
+                {
+                    continue;
+                }
+                else {
+
+                    std::cout << "Uh oh. recv failure!" << std::endl;
+                    exit(1);
+                }
+            }
+            else if(res == 0)
+            {
+                _shouldDisconnect = true;
+                return;
+            }
+            else
+            {
+                messageSizeRecv += res;
+            }
         }
-        while(messageSizeRemaining > 0);
+        while(messageSizeLength - messageSizeRecv > 0 && !_disconnecting);
+
+        if(_disconnecting)
+        {
+            return;
+        }
+
+        memcpy(&messageSize, buffer1, messageSizeLength);
+        delete[] buffer1;
 
         messageSize = ntohl(messageSize);
 
@@ -116,13 +173,43 @@ void ChatClient::ReceiveLoop()
 
         do
         {
-            messageRemaining -= recv(_socketFileDescriptor, buffer.get() + (messageSize - messageRemaining), messageRemaining, 0);
-        } while(messageRemaining > 0);
+            auto res = recv(_socketFileDescriptor, buffer.get() + (messageSize - messageRemaining), messageRemaining, 0);
+            auto err = errno;
 
-        buffer[messageSize] = '\n';
+            if(res == -1)
+            {
+                if(err == EAGAIN || err == EWOULDBLOCK)
+                {
+                    continue;
+                }
+                else
+                {
+                    std::cout << "Uh oh. recv failure!" << std::endl;
+                    exit(1);
+                }
+            }
+            else
+            {
+
+                messageRemaining -= res;
+            }
+        }
+        while(messageRemaining > 0 && !_disconnecting);
+
+        if(_disconnecting)
+        {
+            return;
+        }
+
+        buffer[messageSize] = '\0';
         std::string toPrint(buffer.get());
 
-        std::cout << toPrint << std::endl;
+        // Wipe out the current line, overwrite, and reprompt.
+        std::cout.flush();
+        std::cout << "\33[2K" << '\r' << toPrint << std::endl;
+        std::cout.flush();
+        std::cout << _userHandle << "> ";
+        std::cout.flush();
     }
 }
 

@@ -1,3 +1,4 @@
+import com.sun.security.ntlm.Server;
 import org.apache.commons.cli.*;
 
 import java.io.BufferedReader;
@@ -7,6 +8,7 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ChatServer
@@ -14,6 +16,9 @@ public class ChatServer
 
     int port;
     private ConsoleManager _consoleManager;
+    private ThreadSafeSocketWrapper _wrapper;
+    private ServerSocket _serverSocket;
+    private boolean _disconnecting = false;
 
     public ChatServer(String[] args)
     {
@@ -35,7 +40,7 @@ public class ChatServer
         System.out.println("Welcome to chatserver v1.0!");
         System.out.println(String.format("Running on port: %d", port));
 
-        _consoleManager = new ConsoleManager();
+        _consoleManager = new ConsoleManager(this);
 
         Thread ConsoleThread = new Thread(() ->
         {
@@ -52,11 +57,11 @@ public class ChatServer
 
         try
         {
-            ServerSocket socket = new ServerSocket(port);
+            _serverSocket = new ServerSocket(port);
 
             while(true)
             {
-                Socket connection = socket.accept();
+                Socket connection = _serverSocket.accept();
                 Thread delegate = new Thread(() ->
                     {
                         try
@@ -74,20 +79,40 @@ public class ChatServer
         }
         catch(IOException ex)
         {
-            System.out.println("Unable to create socket!");
-            return 1;
+            if(_disconnecting)
+            {
+                return 0;
+            }
+            else
+            {
+                System.out.println("Unable to create socket!");
+                return 1;
+            }
+        }
+    }
+
+    public void Disconnect()
+    {
+        try
+        {
+            _disconnecting = true;
+            _serverSocket.close();
+        }
+        catch(Exception ex)
+        {
+            //Don't care, we will catch it above.
         }
     }
 
     private void GetUserHandleAndStartThreads(Socket connection) throws IOException
     {
-        ThreadSafeSocketWrapper wrapper = new ThreadSafeSocketWrapper(connection);
-        _consoleManager.SystemMessage(String.format("Client at %s connected.", wrapper.RemoteAddress));
+        _wrapper = new ThreadSafeSocketWrapper(connection);
+        _consoleManager.SystemMessage(String.format("Client at %s connected.", _wrapper.RemoteAddress));
 
-        byte[] handle = wrapper.Read();
+        byte[] handle = _wrapper.Read();
         String str = new String(handle, StandardCharsets.UTF_8);
 
-        _consoleManager.SystemMessage(String.format("Client at %s provides handle %s", wrapper.RemoteAddress, str));
+        _consoleManager.SystemMessage(String.format("Client at %s provides handle %s", _wrapper.RemoteAddress, str));
 
         ConcurrentLinkedQueue<String> input = new ConcurrentLinkedQueue<>();
         ConcurrentLinkedQueue<String> output = new ConcurrentLinkedQueue<>();
@@ -96,12 +121,12 @@ public class ChatServer
 
             try
             {
-                Read(wrapper, output);
+                Read(_wrapper, output);
             }
             catch(IOException ex)
             {
                 //EAT
-                _consoleManager.SystemMessage(String.format("Client at %s disconnected.", wrapper.RemoteAddress));
+                _consoleManager.SystemMessage(String.format("Client at %s disconnected.", _wrapper.RemoteAddress));
                 _consoleManager.RemoveClient(str);
             }
         });
@@ -109,7 +134,7 @@ public class ChatServer
         Thread WriterThread = new Thread(() -> {
             try
             {
-                Write(wrapper, input);
+                Write(_wrapper, input);
             }
             catch(Exception ex)
             {
@@ -121,8 +146,6 @@ public class ChatServer
         WriterThread.start();
 
         _consoleManager.AddClient(str, input, output);
-
-        input.add(String.format("Server> Hello from the server, %s", str));
     }
 
     private void Read(ThreadSafeSocketWrapper wrapper, ConcurrentLinkedQueue<String> queue) throws IOException
@@ -147,7 +170,17 @@ public class ChatServer
 
             while(!queue.isEmpty())
             {
-                wrapper.Write(queue.remove().getBytes(StandardCharsets.UTF_8));
+                String line = queue.remove();
+                if(Objects.equals(line, "\\quit"))
+                {
+                    wrapper.Close();
+                    return;
+                }
+
+                StringBuilder toSend = new StringBuilder();
+                toSend.append("System> ");
+                toSend.append(line);
+                wrapper.Write(toSend.toString().getBytes(StandardCharsets.UTF_8));
             }
         }
     }

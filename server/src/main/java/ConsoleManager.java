@@ -1,3 +1,4 @@
+import org.jline.reader.Expander;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.Terminal;
@@ -7,6 +8,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -22,15 +24,18 @@ public class ConsoleManager
     private Map<String, ConcurrentLinkedQueue<String>> _userOutputMap = new ConcurrentHashMap<>();
     private ConcurrentLinkedQueue<String> _globalOutput = new ConcurrentLinkedQueue<>();
     private LineReader _reader;
+    ChatServer _server;
 
-    public ConsoleManager()
+    public ConsoleManager(ChatServer server)
     {
+        _server = server;
         TerminalBuilder builder = TerminalBuilder.builder();
 
         try
         {
             Terminal _terminal = builder.build();
             _reader = LineReaderBuilder.builder().terminal(_terminal).build();
+            _reader.setOpt(LineReader.Option.DISABLE_EVENT_EXPANSION);
         }
         catch(IOException ex)
         {
