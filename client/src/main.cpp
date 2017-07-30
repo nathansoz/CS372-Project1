@@ -12,6 +12,7 @@ void SIGPIPE_HANDLER(int sig)
 {
     std::cout << std::endl << "Remote has hung up. Disconnecting." << std::endl;
     system("reset -Q");
+    std::cout << std::endl << "Terminal reset called to fix any readline blocking issues." << std::endl;
     exit(0);
 }
 

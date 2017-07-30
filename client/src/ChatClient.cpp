@@ -79,6 +79,7 @@ void ChatClient::DisconnectLoop()
             SafeDisconnect();
             std::cout << std::endl << "Now exiting." << std::endl;
             system("reset -Q");
+            std::cout << std::endl << "Terminal reset called to fix any readline blocking issues." << std::endl;
             exit(0);
         }
     }
