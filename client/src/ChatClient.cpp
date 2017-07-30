@@ -45,6 +45,11 @@ void ChatClient::Disconnect()
     _sendWorker.join();
     _receiveWorker.join();
 
+    if(_disconnectWorker.joinable())
+    {
+        _disconnectWorker.join();
+    }
+
     close(_socketFileDescriptor);
 }
 
