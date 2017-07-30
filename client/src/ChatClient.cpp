@@ -7,6 +7,7 @@
 #include <chrono>
 #include <thread>
 #include <sys/fcntl.h>
+#include <memory>
 
 #include "../include/ChatClient.h"
 #include "../include/Constants.h"
@@ -174,7 +175,7 @@ void ChatClient::ReceiveLoop()
             continue;
 
         size_t messageRemaining = messageSize;
-        std::unique_ptr<char[]> buffer = std::make_unique<char[]>(messageSize + 1);
+        std::unique_ptr<char[]> buffer = std::unique_ptr<char[]> {new char[messageSize + 1]};
 
         do
         {

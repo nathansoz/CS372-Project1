@@ -1,8 +1,5 @@
 #!/bin/bash
 
-export CC=clang
-export CXX=clang++
-
 pushd server
 mvn package
 popd
@@ -12,7 +9,7 @@ if [[ ! -d client_build ]]; then
 fi
 
 pushd client_build
-cmake ../client
+cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ ../client
 make
 
 popd
