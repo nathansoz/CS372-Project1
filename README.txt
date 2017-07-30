@@ -32,7 +32,7 @@ Connecting on port 800
 getaddrinfo failed with: Name or service not known
 
 
-If everything goes well, this is what you see on the server
+This is what the server looks like
 
 nathan@nathan-ub:~/source/chat$ java -jar server/target/chatserver-1.0-SNAPSHOT.jar --port 8080
 Welcome to chatserver v1.0!

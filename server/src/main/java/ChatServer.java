@@ -209,7 +209,6 @@ public class ChatServer
         Options options = new Options();
 
         options.addOption("p", "port", true, "The port that the chat server will run on.");
-        options.addOption("m", "multithreading", false, "Use an implementation that allows for send/rcv at any point");
         options.addOption("h", "help", false, "Display this help.");
 
 
