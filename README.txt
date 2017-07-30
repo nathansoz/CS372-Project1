@@ -2,7 +2,7 @@ You can build the project using ./build.sh on flip.engr.oregonstate.edu
 
 The server is in java, so execute like this after building (using port 8080 in this example):
 
-java -jar server/target/chatserver-1.0-SNAPSHOT.jar 8080
+java -jar server/target/chatserver-1.0-SNAPSHOT.jar --port 8080
 
 The client is in c++. It is a native program that you can execute like this:
 
