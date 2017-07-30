@@ -77,5 +77,9 @@ System>
 *Two ctrl-c commands will exit the server
 
 
+EXTRA CREDIT
 
+* Threaded client and server
+* Server supports more than one client
+* Messages can be sent in any order (not just client-server-client-etc)
 
