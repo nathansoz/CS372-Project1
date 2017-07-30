@@ -54,6 +54,21 @@ void ChatClient::Disconnect()
     close(_socketFileDescriptor);
 }
 
+void ChatClient::SafeDisconnect()
+{
+    _disconnecting = true;
+
+    while(!_sendWorker.joinable())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    _sendWorker.join();
+    _receiveWorker.join();
+
+    close(_socketFileDescriptor);
+}
+
 void ChatClient::DisconnectLoop()
 {
 
@@ -61,7 +76,7 @@ void ChatClient::DisconnectLoop()
     {
         if (_shouldDisconnect) {
             std::cout << std::endl << "Remote has hung up, disconnecting." << std::endl;
-            Disconnect();
+            SafeDisconnect();
             std::cout << std::endl << "Now exiting." << std::endl;
             system("reset -Q");
             exit(0);

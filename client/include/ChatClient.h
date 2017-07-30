@@ -32,6 +32,7 @@ private:
     void SendLoop();
     void ReceiveLoop();
     void DisconnectLoop();
+    void SafeDisconnect();
 
     std::mutex _sendQueueLock;
     std::queue<std::string> _sendQueue;
